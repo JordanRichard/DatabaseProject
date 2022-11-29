@@ -45,17 +45,43 @@ class ChunkReader:
             yield ndx, json.loads(record[1])
 
 
-# TODO: Converts a JSON object to a pandas dataframe object
-def jsonToDataFrame():
-    pass
-
-# TODO: Handles SQL connection and and database creation
-def createDB():
+# TODO: Normalize and Insert pandas Dataframe into DB 
+def jsonToSQL(dataframe):
     print("Initializing the database...")
-    createStmt = "CREATE TABLE tweets;"
+    conn = sqlite3.connect("newDB")
     
+    c = conn.cursor()
+    
+    #tweetDataFrame.to_sql('tweets', conn, if_exists='replace', index = False)
+    
+    print("Do some operations on database here...")
 
-# Function that reads the compressed input data.
+    """
+    Prints each tweet in our list of tweets
+    ind = 1
+    for tweetObj in dataframe:
+        print("TWEET ", ind,"\n",tweetObj,"\n")
+        ind += 1
+    """
+
+    conn.close()
+    print("Database closed... all done.")
+
+
+# TODO: Converts a JSON object to a pandas dataframe object
+def jsonToDataFrame(tweetList):
+    #Converts list of tweet dicts into pandas dataframe
+    tweetDataFrame = pd.DataFrame(tweetList)
+    #tweetDataFrame['created_at'] = pd.to_datetime(tweetList['created_at'])
+    #Cleaning data example, changing to date type
+
+    #display(tweetDataFrame) #Displays dataframe using external library
+    print("Dataframe created. Details below:")
+    print(tweetDataFrame.info(),"\n")
+
+
+
+# Generates a list of JSON objects from compressed input
 def getTweets():
         
     cr = ChunkReader('j228')
@@ -69,19 +95,14 @@ def getTweets():
         tweets.append(obj)
     
     print("Parsed ", len(tweets), " tweets.\n")
-    
-    #Converts list of tweet dicts into pandas dataframe
-    tweetDataFrame = pd.DataFrame(tweets)
-    display(tweetDataFrame) #Displays dataframe using external library
-
-    # Prints each tweet in our list of tweets
-    #ind = 1
-    #for tweetObj in tweets:
-    #    print("TWEET ", ind,"\n",tweetObj,"\n")
-    #    ind += 1
-
     print(']')
+    
+    return tweets
+
 
 
 if __name__ == '__main__':
-    getTweets()
+
+    tweetList = getTweets()
+    newDF = jsonToDataFrame(tweetList)
+    jsonToSQL(tweetList)
