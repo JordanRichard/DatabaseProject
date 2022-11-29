@@ -72,7 +72,7 @@ def getTweets():
     
     #Converts list of tweet dicts into pandas dataframe
     tweetDataFrame = pd.DataFrame(tweets)
-    display(tweetDataFrame)
+    display(tweetDataFrame) #Displays dataframe using external library
 
     # Prints each tweet in our list of tweets
     #ind = 1
