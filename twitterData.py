@@ -1,6 +1,7 @@
-import os, gzip, json, sqlite3
+import os, time, gzip, json, sqlite3
 import pandas as pd
 from IPython.display import display
+from os import path
 
 ###############################################################################
 
@@ -12,6 +13,7 @@ from IPython.display import display
 
 ###############################################################################
 
+# Reads compressed json objects from a gzip file. Returns each object and an index.
 class ChunkReader:
 
     def __init__(self, cnkdir):
@@ -45,30 +47,35 @@ class ChunkReader:
             yield ndx, json.loads(record[1])
 
 
-# TODO: Normalize and Insert pandas Dataframe into DB 
-def jsonToSQL(dataframe):
-    print("Initializing the database...")
-    
-
-
-# TODO: Converts a JSON object to a pandas dataframe object
-def jsonToDataFrame(tweetList):
-    #Converts list of tweet dicts into pandas dataframe
-    tweetDataFrame = pd.DataFrame(tweetList)
-    #tweetDataFrame['created_at'] = pd.to_datetime(tweetList['created_at'])
-    #Cleaning data example, changing to date type
-
-    #display(tweetDataFrame) #Displays dataframe using external library
-    print("Dataframe created. Details below:")
-    print(tweetDataFrame.head(),"\n")
-
-
-
-
-def insertDB(tupleToInsert):
+# Inserts a tuple into the sqlite database. Slow approach - need to alter to transaction
+def insertTuple(tupleToInsert):
     conn = sqlite3.connect("twittDB.db")
     c = conn.cursor()
-    c.execute("INSERT INTO testtable VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",tupleToInsert)
+    
+    query = ("INSERT INTO tweets ("
+        "created_at,"
+        "id_str,"
+        "source,"
+        "tweet_text,"
+        "truncated,"
+        "name,"
+        "screen_name,"
+        "location,url,"
+        "description,"
+        "verified,"
+        "followers_count,"
+        "friends_count,"
+        "favourite_count,"
+        "statuses_count,"
+        "user_created_at,"
+        "quote_count,"
+        "reply_count,"
+        "retweet_count,"
+        "favourites_count,"
+        "lang) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);")
+
+    c.execute(query,tupleToInsert)
+    conn.commit()
     conn.close()
 
 
@@ -78,24 +85,24 @@ def createDB():
     print("Starting up the DB...")
     conn = sqlite3.connect("twittDB.db")
     
-    stmt = ("CREATE TABLE testtable("
+    stmt = ("CREATE TABLE tweets("
         "created_at VARCHAR,"
         "id_str VARCHAR,"
-        "source VARCHAR,"
         "tweet_text TEXT,"
+        "source VARCHAR,"
         "truncated BOOL,"
         "name VARCHAR,"
         "screen_name VARCHAR,"
         "location VARCHAR,"
         "url VARCHAR,"
-        "description TEXT"
+        "description TEXT,"
         "verified BOOL,"
         "followers_count int,"
         "friends_count int,"
         "favourite_count int,"
         "statuses_count int,"
         "user_created_at VARCHAR,"
-        "place TEXT,"
+        #"place VARCHAR,"       #Causing some issues
         "quote_count int,"
         "reply_count int,"
         "retweet_count int,"
@@ -105,19 +112,8 @@ def createDB():
     c = conn.cursor()
     print(c.execute(stmt))
 
-    #c.execute("INSERT INTO testtable VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",tuple)
-
-    # If using pandas approach - data needs to be flattened? 
-    #tweetDataFrame.to_sql('tweets', conn, if_exists='replace', index = False)
-    
-    print("Do some operations on database here...")
-
-    """
-        TODO: Insert Values into DB
-    """
-
     conn.close()
-    print("Database closed... all done.")
+    print("Database created.\n")
 
 
 
@@ -127,17 +123,16 @@ def getTweets():
     cr = ChunkReader('j228')
     iter = cr.get_records(228000)
     
-    # Add each tweet json to a list of tweets
-    #tweets = [] # Creates a list of tweets
-    x = 0
-    print('[')
+    startTime = time.time()
+    print("Getting the tweets from our dataset...")
     for i, (ndx, obj) in zip(range(228000),iter):    
-        #tweets.append(obj)
+    
+        # Filters out tweets without text
         if 'text' in obj:
-            #print(ndx, obj['text'], "\n")
             
-            # More convenient dict of json values to be inserted 
-            tweetValues = (obj['created_at'],
+            # List of values we are interested in from each tweet object, acts as a DB row for insert
+            tweetValues = (
+                obj['created_at'],
                 obj['id_str'],
                 obj['text'],
                 obj['source'],
@@ -153,7 +148,7 @@ def getTweets():
                 obj['user']['favourites_count'],
                 obj['user']['statuses_count'],
                 obj['user']['created_at'],
-                obj['place'],
+                #obj['place'],                      # Type issue with sqlite -- not text or varchar?
                 obj['quote_count'],
                 obj[('reply_count')],
                 obj['retweet_count'],
@@ -161,20 +156,24 @@ def getTweets():
                 obj['lang']
                 )
 
-            print(ndx,tweetValues)
+            #print(ndx,tweetValues) # Shows the json objects as they are retrieved
 
-            insertDB(tweetValues)
+            insertTuple(tweetValues)                   
 
-
-    print("Parsed ", ndx, " tweets.\n")
-    print(']')
+    endTime = time.time()
+    elapsedTime = endTime - startTime
+    print("Processed ", ndx, " tweets in", elapsedTime, " seconds.\n")
     
 
 
 
 if __name__ == '__main__':
+    
+    # Deletes and re-creates database if one already exists
+    if path.exists('twittDB.db'):
+        print("Database file already exists -- Reinitializing.")
+        os.remove('twittDB.db')
+        
     createDB()
     getTweets()
     
-    #newDF = jsonToDataFrame(tweetList)
-    #jsonToSQL(tweetList)
