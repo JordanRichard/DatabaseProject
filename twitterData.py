@@ -48,24 +48,7 @@ class ChunkReader:
 # TODO: Normalize and Insert pandas Dataframe into DB 
 def jsonToSQL(dataframe):
     print("Initializing the database...")
-    conn = sqlite3.connect("newDB")
     
-    c = conn.cursor()
-    
-    #tweetDataFrame.to_sql('tweets', conn, if_exists='replace', index = False)
-    
-    print("Do some operations on database here...")
-
-    """
-    Prints each tweet in our list of tweets
-    ind = 1
-    for tweetObj in dataframe:
-        print("TWEET ", ind,"\n",tweetObj,"\n")
-        ind += 1
-    """
-
-    conn.close()
-    print("Database closed... all done.")
 
 
 # TODO: Converts a JSON object to a pandas dataframe object
@@ -77,7 +60,64 @@ def jsonToDataFrame(tweetList):
 
     #display(tweetDataFrame) #Displays dataframe using external library
     print("Dataframe created. Details below:")
-    print(tweetDataFrame.info(),"\n")
+    print(tweetDataFrame.head(),"\n")
+
+
+
+
+def insertDB(tupleToInsert):
+    conn = sqlite3.connect("twittDB.db")
+    c = conn.cursor()
+    c.execute("INSERT INTO testtable VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",tupleToInsert)
+    conn.close()
+
+
+# Initializes The database
+def createDB():
+    
+    print("Starting up the DB...")
+    conn = sqlite3.connect("twittDB.db")
+    
+    stmt = ("CREATE TABLE testtable("
+        "created_at VARCHAR,"
+        "id_str VARCHAR,"
+        "source VARCHAR,"
+        "tweet_text TEXT,"
+        "truncated BOOL,"
+        "name VARCHAR,"
+        "screen_name VARCHAR,"
+        "location VARCHAR,"
+        "url VARCHAR,"
+        "description TEXT"
+        "verified BOOL,"
+        "followers_count int,"
+        "friends_count int,"
+        "favourite_count int,"
+        "statuses_count int,"
+        "user_created_at VARCHAR,"
+        "place TEXT,"
+        "quote_count int,"
+        "reply_count int,"
+        "retweet_count int,"
+        "favourites_count int,"
+        "lang VARCHAR);")
+    
+    c = conn.cursor()
+    print(c.execute(stmt))
+
+    #c.execute("INSERT INTO testtable VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",tuple)
+
+    # If using pandas approach - data needs to be flattened? 
+    #tweetDataFrame.to_sql('tweets', conn, if_exists='replace', index = False)
+    
+    print("Do some operations on database here...")
+
+    """
+        TODO: Insert Values into DB
+    """
+
+    conn.close()
+    print("Database closed... all done.")
 
 
 
@@ -87,22 +127,54 @@ def getTweets():
     cr = ChunkReader('j228')
     iter = cr.get_records(228000)
     
+    # Add each tweet json to a list of tweets
+    #tweets = [] # Creates a list of tweets
+    x = 0
     print('[')
-
-    #Add each tweet json to a list of tweets
-    tweets = [] #Creates a list of tweets
     for i, (ndx, obj) in zip(range(228000),iter):    
-        tweets.append(obj)
-    
-    print("Parsed ", len(tweets), " tweets.\n")
+        #tweets.append(obj)
+        if 'text' in obj:
+            #print(ndx, obj['text'], "\n")
+            
+            # More convenient dict of json values to be inserted 
+            tweetValues = (obj['created_at'],
+                obj['id_str'],
+                obj['text'],
+                obj['source'],
+                obj['truncated'],
+                obj['user']['name'],
+                obj['user']['screen_name'],
+                obj['user']['location'],
+                obj['user']['url'],
+                obj['user']['description'],
+                obj['user']['verified'],
+                obj['user']['followers_count'],
+                obj['user']['friends_count'],
+                obj['user']['favourites_count'],
+                obj['user']['statuses_count'],
+                obj['user']['created_at'],
+                obj['place'],
+                obj['quote_count'],
+                obj[('reply_count')],
+                obj['retweet_count'],
+                obj['favorite_count'],
+                obj['lang']
+                )
+
+            print(ndx,tweetValues)
+
+            insertDB(tweetValues)
+
+
+    print("Parsed ", ndx, " tweets.\n")
     print(']')
     
-    return tweets
 
 
 
 if __name__ == '__main__':
-
-    tweetList = getTweets()
-    newDF = jsonToDataFrame(tweetList)
-    jsonToSQL(tweetList)
+    createDB()
+    getTweets()
+    
+    #newDF = jsonToDataFrame(tweetList)
+    #jsonToSQL(tweetList)
