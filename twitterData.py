@@ -48,7 +48,7 @@ class ChunkReader:
 
 
 # Inserts a tuple into the sqlite database. Slow approach - need to alter to transaction
-def insertTweetTuple(tupleToInsert):
+def insertTweetTuple(tweetTuple,userTuple):
     conn = sqlite3.connect("twittDB.db")
     c = conn.cursor()
     
@@ -66,7 +66,24 @@ def insertTweetTuple(tupleToInsert):
                             lang) VALUES(?,?,?,?,?,?,?,?,?,?);
                     '''
 
-    c.execute(tweetsQuery,tupleToInsert)
+    usersQuery =  '''
+                        INSERT INTO user (
+                            id_str,
+                            name,
+                            screen_name,
+                            location,
+                            url,
+                            description,
+                            verified,
+                            followers_count,
+                            friends_count,
+                            favourites_count,
+                            statuses_count,
+                            created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
+                  '''
+
+    c.execute(tweetsQuery,tweetTuple)
+    c.execute(usersQuery,userTuple)
     conn.commit()
     conn.close()
 
@@ -147,17 +164,31 @@ def getTweets():
                 obj['lang']
                 )
                 #obj['place'],                      # Type issue with sqlite -- not text or varchar?
-                
+
+            #List for user table
+            userValues = (
+                obj['id_str'],
+                obj['user']['name'],
+                obj['user']['screen_name'],
+                obj['user']['location'],
+                obj['user']['url'],
+                obj['user']['description'],
+                obj['user']['verified'],
+                obj['user']['followers_count'],
+                obj['user']['friends_count'],
+                obj['user']['favourites_count'],
+                obj['user']['statuses_count'],
+                obj['user']['created_at']
+                )
+
             #print(ndx,tweetValues) # Shows the json objects as they are retrieved
 
-            insertTweetTuple(tweetValues)                   
+            insertTweetTuple(tweetValues,userValues)                   
 
     endTime = time.time()
     elapsedTime = endTime - startTime
     print("Processed ", ndx, " tweets in", elapsedTime, " seconds.\n")
     
-
-
 
 if __name__ == '__main__':
     
