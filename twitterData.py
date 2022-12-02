@@ -48,33 +48,25 @@ class ChunkReader:
 
 
 # Inserts a tuple into the sqlite database. Slow approach - need to alter to transaction
-def insertTuple(tupleToInsert):
+def insertTweetTuple(tupleToInsert):
     conn = sqlite3.connect("twittDB.db")
     c = conn.cursor()
     
-    query = ("INSERT INTO tweets ("
-        "created_at,"
-        "id_str,"
-        "source,"
-        "tweet_text,"
-        "truncated,"
-        "name,"
-        "screen_name,"
-        "location,url,"
-        "description,"
-        "verified,"
-        "followers_count,"
-        "friends_count,"
-        "favourite_count,"
-        "statuses_count,"
-        "user_created_at,"
-        "quote_count,"
-        "reply_count,"
-        "retweet_count,"
-        "favourites_count,"
-        "lang) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?);")
+    tweetsQuery =  ''' 
+                        INSERT INTO tweets (
+                            id_str,
+                            created_at,
+                            source,
+                            tweet_text,
+                            truncated,
+                            quote_count,
+                            reply_count,
+                            retweet_count,
+                            favourites_count,
+                            lang) VALUES(?,?,?,?,?,?,?,?,?,?);
+                    '''
 
-    c.execute(query,tupleToInsert)
+    c.execute(tweetsQuery,tupleToInsert)
     conn.commit()
     conn.close()
 
@@ -85,32 +77,43 @@ def createDB():
     print("Starting up the DB...")
     conn = sqlite3.connect("twittDB.db")
     
-    stmt = ("CREATE TABLE tweets("
-        "created_at VARCHAR,"
-        "id_str VARCHAR,"
-        "tweet_text TEXT,"
-        "source VARCHAR,"
-        "truncated BOOL,"
-        "name VARCHAR,"
-        "screen_name VARCHAR,"
-        "location VARCHAR,"
-        "url VARCHAR,"
-        "description TEXT,"
-        "verified BOOL,"
-        "followers_count int,"
-        "friends_count int,"
-        "favourite_count int,"
-        "statuses_count int,"
-        "user_created_at VARCHAR,"
-        #"place VARCHAR,"       #Causing some issues
-        "quote_count int,"
-        "reply_count int,"
-        "retweet_count int,"
-        "favourites_count int,"
-        "lang VARCHAR);")
+    createTweetsStmt =  '''
+                CREATE TABLE tweets(
+                    id_str VARCHAR PRIMARY KEY NOT NULL,
+                    created_at VARCHAR,
+                    tweet_text TEXT,
+                    source VARCHAR,
+                    truncated BOOL,
+                    quote_count int,
+                    reply_count int,
+                    retweet_count int,
+                    favourites_count int,
+                    lang VARCHAR);
+            ''' 
+                #place VARCHAR,       Causing some issues
     
+    
+
+    createUserStmt =  '''    
+                        CREATE TABLE user(
+                            id_str VARCHAR PRIMARY KEY NOT NULL,
+                            name VARCHAR,
+                            screen_name VARCHAR,
+                            location VARCHAR,
+                            url VARCHAR,
+                            description TEXT,
+                            verified BOOL,
+                            followers_count INT,
+                            friends_count INT,
+                            favourites_count INT,
+                            statuses_count INT,
+                            created_at VARCHAR
+                            );
+                      '''
+
     c = conn.cursor()
-    print(c.execute(stmt))
+    print(c.execute(createTweetsStmt))
+    c.execute(createUserStmt)
 
     conn.close()
     print("Database created.\n")
@@ -132,33 +135,22 @@ def getTweets():
             
             # List of values we are interested in from each tweet object, acts as a DB row for insert
             tweetValues = (
-                obj['created_at'],
                 obj['id_str'],
+                obj['created_at'],
                 obj['text'],
                 obj['source'],
                 obj['truncated'],
-                obj['user']['name'],
-                obj['user']['screen_name'],
-                obj['user']['location'],
-                obj['user']['url'],
-                obj['user']['description'],
-                obj['user']['verified'],
-                obj['user']['followers_count'],
-                obj['user']['friends_count'],
-                obj['user']['favourites_count'],
-                obj['user']['statuses_count'],
-                obj['user']['created_at'],
-                #obj['place'],                      # Type issue with sqlite -- not text or varchar?
                 obj['quote_count'],
                 obj[('reply_count')],
                 obj['retweet_count'],
                 obj['favorite_count'],
                 obj['lang']
                 )
-
+                #obj['place'],                      # Type issue with sqlite -- not text or varchar?
+                
             #print(ndx,tweetValues) # Shows the json objects as they are retrieved
 
-            insertTuple(tweetValues)                   
+            insertTweetTuple(tweetValues)                   
 
     endTime = time.time()
     elapsedTime = endTime - startTime
