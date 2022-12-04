@@ -1,6 +1,5 @@
 import os, time, gzip, json, sqlite3
 import pandas as pd
-from IPython.display import display
 from os import path
 
 ###############################################################################
@@ -13,7 +12,7 @@ from os import path
 
 ###############################################################################
 
-# Reads compressed json objects from a gzip file. Returns each object and an index.
+# Reads compressed json objects from a gzip file. Returns each object and index
 class ChunkReader:
 
     def __init__(self, cnkdir):
@@ -47,8 +46,8 @@ class ChunkReader:
             yield ndx, json.loads(record[1])
 
 
-# Inserts a tuple into the sqlite database. Slow approach - need to alter to transaction
-def insertTweetTuple(tweetTuple,userTuple):
+# Inserts tuple into sqlite database. Slow approach - need transaction
+def insertTweetTuple(tweetTuple,userTuple,placeTuple,entitiesTuple):
     conn = sqlite3.connect("twittDB.db")
     c = conn.cursor()
     
@@ -56,8 +55,8 @@ def insertTweetTuple(tweetTuple,userTuple):
                         INSERT INTO tweets (
                             id_str,
                             created_at,
-                            source,
                             tweet_text,
+                            source,
                             truncated,
                             quote_count,
                             reply_count,
@@ -79,11 +78,31 @@ def insertTweetTuple(tweetTuple,userTuple):
                             friends_count,
                             favourites_count,
                             statuses_count,
-                            created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
+                            acct_created_at) VALUES(?,?,?,?,?,?,?,?,?,?,?,?);
                   '''
 
+    placeQuery =  '''
+                        INSERT INTO place (
+                            id_str,
+                            place_type,
+                            name,
+                            full_name,
+                            country_code,
+                            country) VALUES (?,?,?,?,?,?);
+                  '''
+
+    hashtagsQuery =  '''
+                        INSERT INTO entities (
+                            id_str,
+                            hashtags) VALUES (?,?);                            
+                     '''
+
+    #Write values to DB
     c.execute(tweetsQuery,tweetTuple)
     c.execute(usersQuery,userTuple)
+    c.execute(placeQuery,placeTuple)
+    c.execute(hashtagsQuery,entitiesTuple)
+
     conn.commit()
     conn.close()
 
@@ -106,11 +125,8 @@ def createDB():
                     retweet_count int,
                     favourites_count int,
                     lang VARCHAR);
-            ''' 
-                #place VARCHAR,       Causing some issues
-    
-    
-
+                        ''' 
+                
     createUserStmt =  '''    
                         CREATE TABLE user(
                             id_str VARCHAR PRIMARY KEY NOT NULL,
@@ -124,13 +140,33 @@ def createDB():
                             friends_count INT,
                             favourites_count INT,
                             statuses_count INT,
-                            created_at VARCHAR
+                            acct_created_at VARCHAR
                             );
                       '''
+
+    createPlaceStmt =  '''
+                        CREATE TABLE place(
+                            id_str VARCHAR PRIMARY KEY NOT NULL,
+                            place_type VARCHAR,
+                            name VARCHAR,
+                            full_name VARCHAR,
+                            country_code VARCHAR,
+                            country VARCHAR
+                            );
+                       '''
+
+    createEntitiesStmt =  '''
+                            CREATE TABLE entities(
+                                id_str PRIMARY KEY NOT NULL,
+                                    hashtags VARCHAR
+                                );
+                          '''
 
     c = conn.cursor()
     print(c.execute(createTweetsStmt))
     c.execute(createUserStmt)
+    c.execute(createPlaceStmt)
+    c.execute(createEntitiesStmt)
 
     conn.close()
     print("Database created.\n")
@@ -142,15 +178,15 @@ def getTweets():
         
     cr = ChunkReader('j228')
     iter = cr.get_records(228000)
-    
+    count = 0
     startTime = time.time()
     print("Getting the tweets from our dataset...")
     for i, (ndx, obj) in zip(range(228000),iter):    
-    
+        placeValues = ()
         # Filters out tweets without text
         if 'text' in obj:
             
-            # List of values we are interested in from each tweet object, acts as a DB row for insert
+            # List of values to save from each tweet object, acts as DB row 
             tweetValues = (
                 obj['id_str'],
                 obj['created_at'],
@@ -163,7 +199,6 @@ def getTweets():
                 obj['favorite_count'],
                 obj['lang']
                 )
-                #obj['place'],                      # Type issue with sqlite -- not text or varchar?
 
             #List for user table
             userValues = (
@@ -181,9 +216,54 @@ def getTweets():
                 obj['user']['created_at']
                 )
 
-            #print(ndx,tweetValues) # Shows the json objects as they are retrieved
+            # List for geo place data if present
+            if obj['place'] != None:
+                placeValues = (
+                    obj['id_str'],
+                    obj['place']['place_type'],
+                    obj['place']['name'],
+                    obj['place']['full_name'],
+                    obj['place']['country_code'],
+                    obj['place']['country']
+                    )
+            #Return null place if not included by usr    
+            else:                   
+                placeValues = (
+                    obj['id_str'],
+                    None,
+                    None,
+                    None,
+                    None,
+                    None
+                )
 
-            insertTweetTuple(tweetValues,userValues)                   
+            # Converts list of hashtag objects from each tweet into a string 
+            # containing a summary list
+            if obj['entities']['hashtags'] != None:
+                hashCounter = 0;                    #Counter tracking hash indx
+                hashstring = ""                     #String we are creating
+
+                for _ in obj['entities']['hashtags']:
+                    hashtagList = obj['entities']['hashtags']
+                    
+                    #Finds endpoint of hashtag text -- dirty fix
+                    endpt = str(hashtagList[hashCounter]).index('\', ') 
+                    
+                    #Concatenates current hashtag to list of tags for this tweet
+                    newstring = (str(hashtagList[hashCounter])[10:endpt])
+                    
+                    #Filter out ugly extra comma on first iteration
+                    if hashCounter == 0:
+                        hashstring = newstring
+                    else:
+                        hashstring = hashstring + "," + newstring
+
+                    hashCounter += 1                       
+            entitiesValues = (obj['id_str'],hashstring)
+
+            #Write given tuples into according tables
+            insertTweetTuple(tweetValues,userValues,placeValues,entitiesValues)     
+
 
     endTime = time.time()
     elapsedTime = endTime - startTime
