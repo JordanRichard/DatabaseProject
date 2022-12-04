@@ -27,6 +27,7 @@ class ChunkReader:
         cnkdir = self.get_cnkdir()
         return f'{cnkdir}/a{cnk:08d}.cnk.gz'
 
+
     # Returns each tweet obj and its index
     def get_records(self, cnk):
         fn = self.get_filename(cnk)
@@ -58,11 +59,7 @@ def insertTweetTuple(tweetTuple,userTuple,placeTuple,entitiesTuple):
                             tweet_text,
                             source,
                             truncated,
-                            quote_count,
-                            reply_count,
-                            retweet_count,
-                            favourites_count,
-                            lang) VALUES(?,?,?,?,?,?,?,?,?,?);
+                            lang) VALUES(?,?,?,?,?,?);
                     '''
 
     usersQuery =  '''
@@ -120,10 +117,6 @@ def createDB():
                     tweet_text TEXT,
                     source VARCHAR,
                     truncated BOOL,
-                    quote_count int,
-                    reply_count int,
-                    retweet_count int,
-                    favourites_count int,
                     lang VARCHAR);
                         ''' 
                 
@@ -193,10 +186,6 @@ def getTweets():
                 obj['text'],
                 obj['source'],
                 obj['truncated'],
-                obj['quote_count'],
-                obj[('reply_count')],
-                obj['retweet_count'],
-                obj['favorite_count'],
                 obj['lang']
                 )
 
@@ -239,9 +228,10 @@ def getTweets():
 
             # Converts list of hashtag objects from each tweet into a string 
             # containing a summary list
+            hashstring = None                     #String we are creating
             if obj['entities']['hashtags'] != None:
                 hashCounter = 0;                    #Counter tracking hash indx
-                hashstring = ""                     #String we are creating
+                
 
                 for _ in obj['entities']['hashtags']:
                     hashtagList = obj['entities']['hashtags']
