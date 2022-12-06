@@ -1,0 +1,182 @@
+
+				--STATS FROM DB--
+
+	- # of geo-tagged tweets using place		: 39
+
+		select count(*) from place where name not null;
+
+	- # of total tweets							: 7024
+
+	- Average length of each tweet in characters: 85.3183371298405
+
+		select AVG(LENGTH(tweet_text)) from tweets;
+
+	- Tweets by source (only showing major ones)
+
+
+		select source,count(source) from tweets group by source;
+
+		<a href="http://twitter.com/#!/download/ipad" rel="nofollow">Twitter for iPad</a>|126
+		<a href="http://twitter.com/download/android" rel="nofollow">Twitter for Android</a>|3181
+		<a href="http://twitter.com/download/iphone" rel="nofollow">Twitter for iPhone</a>|2282
+		<a href="http://twittbot.net/" rel="nofollow">twittbot.net</a>|114
+		<a href="http://itunes.apple.com/us/app/twitter/id409789998?mt=12" rel="nofollow">Twitter for Mac</a>|104
+		<a href="https://mobile.twitter.com" rel="nofollow">Twitter Web App</a>|910
+
+	- User followers
+	
+
+	MAX
+		select name,max(followers_count) from user;
+		Mashable|9436297
+	MIN
+		select name,min(followers_count) from user;
+		NotRiley|0
+
+	MEAN
+		select avg(followers_count) from user;
+		6797.06791002278
+
+	# with 0
+		select count(friends_count) from user where followers_count = 	0;
+		166
+
+
+
+
+	- User friends (following) 
+
+	MAX
+		select name,max(friends_count) from user;
+		Isaac Thorne|46486
+	MIN
+		select name,min(friends_count) from user;
+		Marine Posey|0
+	MEAN
+		select avg(friends_count) from user;
+		989.692767653759
+	# with 0
+		select count(friends_count) from user where friends_count = 0;
+		89
+
+	- User Favourites
+
+	MAX
+	select name,MAX(favourites_count) from user;
+	Bellura🦣💙|1129204
+
+
+	MIN
+	select min(favourites_count) from user;
+	0
+
+	MEAN
+	select avg(favourites_count) from user;
+	31273.0489749431
+
+	# with 0
+	select count(favourites_count) from user where favourites_count = 0;
+	208
+
+	MAX
+	select name,MAX(statuses_count) from user;
+	Test Account1|47225426
+
+	MIN
+	select name,Min(statuses_count) from user;
+	sonia aslam|1
+
+	MEAN
+	select avg(statuses_count) from user;
+	62685.2891514806
+
+	# with 1
+	select count(statuses_count) from user where statuses_count = 1;
+	11
+
+	- Language
+
+	LANG DISTR
+
+	select lang,count(lang) from tweets group by lang;
+	am|1
+	ar|177
+	bn|18
+	ca|12
+	cs|6
+	cy|4
+	da|4
+	de|38
+	el|7
+	en|2256
+	es|421
+	et|18
+	eu|1
+	fa|22
+	fi|6
+	fr|117
+	gu|5
+	hi|107
+	ht|8
+	hu|4
+	hy|1
+	in|262
+	is|1
+	it|36
+	iw|4
+	ja|1217
+	ko|250
+	lt|1
+	lv|2
+	ml|1
+	mr|3
+	ne|3
+	nl|18
+	no|2
+	pl|31
+	ps|1
+	pt|129
+	ro|1
+	ru|35
+	sr|1
+	sv|7
+	ta|31
+	te|6
+	th|525
+	tl|111
+	tr|237
+	uk|15
+	und|667
+	ur|119
+	vi|17
+	zh|58
+
+ - Not Truncated
+
+ 	select count(truncated) from tweets where truncated = 0;
+	6574
+
+ - Truncated
+ 	select count(truncated) from tweets where truncated = 1;
+	450
+
+- Verified
+	select count(*) from user where verified = True;
+	67
+
+
+
+-------------------------PERFORMANCE-------------------------------------------
+
+
+
+Before - after transaction implementation
+
+ - 4 blocks:
+ 	- before: Processed  32772  tweets in 185.00658631324768  seconds.
+ 	- after: Processed  32772  tweets in 4.568151950836182  seconds.
+
+
+ - Full size:
+ 	- before: ~ 3300 seconds
+ 	- after: Processed  811107  tweets in 96.58974003791809  seconds.
